@@ -163,10 +163,6 @@ IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, 
     HciCommandHdr *hdr = nullptr;
     uint32_t hdrLen = 0;
     char hciBuf[MAX_HCI_BUF_LEN] = {0};
-
-    //if (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM || hdr->opcode == HCI_OP_LE_SET_SCAN_ENABLE) {
-        //IOLog("hdr->code: %d, timeout: %d", hdr->opcode, timeout);
-    //}
     
     if (data == nullptr) {
         if (descriptor != nullptr &&
@@ -179,6 +175,7 @@ IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, 
                 descriptor->complete(kIODirectionOut);
         }
         hdr = (HciCommandHdr *)hciBuf;
+
         if (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM) {
             if (!_randomAddressInit) {
                 randomAddressRequest.bmRequestType = makeDeviceRequestbmRequestType(kRequestDirectionOut, kRequestTypeClass, kRequestRecipientInterface);
@@ -194,11 +191,11 @@ IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, 
                 writeHCIDescriptor->complete();
                 const char *randAddressDump = _hexDumpHCIData((uint8_t *)randomAddressHci, 9);
                 if (randAddressDump) {
-                    IOLog("[PATCH] Sending Random Address HCI %lld %s", ret, randAddressDump);
+                    SYSLOG(DRV_NAME, "[PATCH] Sending Random Address HCI %lld %s", ret, randAddressDump);
                     IOFree((void *)randAddressDump, 9 * 3 + 1);
                 }
                 _randomAddressInit = true;
-                IOLog("[PATCH] Resend LE SCAN PARAM HCI %lld", ret);
+                SYSLOG(DRV_NAME, "[PATCH] Resend LE SCAN PARAM HCI %lld", ret);
             }
         }
     } else {
@@ -209,12 +206,15 @@ IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, 
         // HCI reset, we need to send Random address again
         if (hdr->opcode == HCI_OP_RESET)
             _randomAddressInit = false;
+        if (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM || hdr->opcode == HCI_OP_LE_SET_SCAN_ENABLE) {
+            SYSLOG(DRV_NAME, "hdr->code: %d, timeout: %d", hdr->opcode, timeout);
+        }
 #if DEBUG
-        IOLog("[%s] bRequest: 0x%x direction: %s type: %s recipient: %s wValue: 0x%02x wIndex: 0x%02x opcode: 0x%04x len: %d length: %d async: %d", provider->getName(), request.bRequest, requestDirectionNames[(request.bmRequestType & kDeviceRequestDirectionMask) >> kDeviceRequestDirectionPhase], requestRecipientNames[(request.bmRequestType & kDeviceRequestRecipientMask) >> kDeviceRequestRecipientPhase], requestTypeNames[(request.bmRequestType & kDeviceRequestTypeMask) >> kDeviceRequestTypePhase], request.wValue, request.wIndex, hdr->opcode, hdr->len, request.wLength, completion != nullptr);
+        DBGLOG(DRV_NAME, "[%s] bRequest: 0x%x direction: %s type: %s recipient: %s wValue: 0x%02x wIndex: 0x%02x opcode: 0x%04x len: %d length: %d async: %d", provider->getName(), request.bRequest, requestDirectionNames[(request.bmRequestType & kDeviceRequestDirectionMask) >> kDeviceRequestDirectionPhase], requestRecipientNames[(request.bmRequestType & kDeviceRequestRecipientMask) >> kDeviceRequestRecipientPhase], requestTypeNames[(request.bmRequestType & kDeviceRequestTypeMask) >> kDeviceRequestTypePhase], request.wValue, request.wIndex, hdr->opcode, hdr->len, request.wLength, completion != nullptr);
         if (hdrLen) {
             const char *dump = _hexDumpHCIData((uint8_t *)hdr, hdrLen);
             if (dump) {
-                IOLog("[Request]: %s", dump);
+                DBGLOG(DRV_NAME, "[Request]: %s", dump);
                 IOFree((void *)dump, hdrLen * 3 + 1);
             }
         }
