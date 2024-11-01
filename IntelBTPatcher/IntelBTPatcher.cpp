@@ -160,55 +160,18 @@ IOBufferMemoryDescriptor *writeHCIDescriptor = nullptr;
 
 IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, StandardUSB::DeviceRequest &request, void *data, IOMemoryDescriptor *descriptor, unsigned int &length, IOUSBHostCompletion *completion, unsigned int timeout)
 {
-    HciCommandHdr *hdr = nullptr;
-    uint32_t hdrLen = 0;
-    char hciBuf[MAX_HCI_BUF_LEN] = {0};
-    
-    if (data == nullptr) {
-        if (descriptor != nullptr &&
-            (getKernelVersion() < KernelVersion::Sequoia || !descriptor->prepare(kIODirectionOut))) {
-            if (descriptor->getLength() > 0) {
-                descriptor->readBytes(0, hciBuf, min(descriptor->getLength(), MAX_HCI_BUF_LEN));
-                hdrLen = (uint32_t)min(descriptor->getLength(), MAX_HCI_BUF_LEN);
-            }
-            if (getKernelVersion() >= KernelVersion::Sequoia)
-                descriptor->complete(kIODirectionOut);
-        }
-        hdr = (HciCommandHdr *)hciBuf;
+    HciCommandHdr *hdr = (HciCommandHdr *)data;
+    uint32_t hdrLen = request.wLength - 3;
+    IOReturn ret;
 
-        if (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM) {
-            if (!_randomAddressInit) {
-                randomAddressRequest.bmRequestType = makeDeviceRequestbmRequestType(kRequestDirectionOut, kRequestTypeClass, kRequestRecipientInterface);
-                randomAddressRequest.bRequest = 0xE0;
-                randomAddressRequest.wIndex = 0;
-                randomAddressRequest.wValue = 0;
-                randomAddressRequest.wLength = 9;
-                length = 9;
-                if (writeHCIDescriptor == nullptr)
-                    writeHCIDescriptor = IOBufferMemoryDescriptor::withBytes(randomAddressHci, 9, kIODirectionOut);
-                writeHCIDescriptor->prepare(kIODirectionOut);
-                IOReturn ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, randomAddressRequest, nullptr, writeHCIDescriptor, length, nullptr, timeout);
-                writeHCIDescriptor->complete();
-                const char *randAddressDump = _hexDumpHCIData((uint8_t *)randomAddressHci, 9);
-                if (randAddressDump) {
-                    SYSLOG(DRV_NAME, "[PATCH] Sending Random Address HCI %lld %s", ret, randAddressDump);
-                    IOFree((void *)randAddressDump, 9 * 3 + 1);
-                }
-                _randomAddressInit = true;
-                SYSLOG(DRV_NAME, "[PATCH] Resend LE SCAN PARAM HCI %lld", ret);
-            }
-        }
-    } else {
-        hdr = (HciCommandHdr *)data;
-        hdrLen = request.wLength - 3;
-    }
     if (hdr) {
-        // HCI reset, we need to send Random address again
-        if (hdr->opcode == HCI_OP_RESET)
-            _randomAddressInit = false;
         if (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM || hdr->opcode == HCI_OP_LE_SET_SCAN_ENABLE) {
             SYSLOG(DRV_NAME, "hdr->code: %d, timeout: %d", hdr->opcode, timeout);
+            ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, 50000);
         }
+        else
+            ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, timeout);
+            
 #if DEBUG
         DBGLOG(DRV_NAME, "[%s] bRequest: 0x%x direction: %s type: %s recipient: %s wValue: 0x%02x wIndex: 0x%02x opcode: 0x%04x len: %d length: %d async: %d", provider->getName(), request.bRequest, requestDirectionNames[(request.bmRequestType & kDeviceRequestDirectionMask) >> kDeviceRequestDirectionPhase], requestRecipientNames[(request.bmRequestType & kDeviceRequestRecipientMask) >> kDeviceRequestRecipientPhase], requestTypeNames[(request.bmRequestType & kDeviceRequestTypeMask) >> kDeviceRequestTypePhase], request.wValue, request.wIndex, hdr->opcode, hdr->len, request.wLength, completion != nullptr);
         if (hdrLen) {
@@ -220,5 +183,5 @@ IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, 
         }
 #endif
     }
-    return FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, timeout);
+    return ret;
 }
