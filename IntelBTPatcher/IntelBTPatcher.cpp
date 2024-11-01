@@ -165,7 +165,7 @@ IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, 
     char hciBuf[MAX_HCI_BUF_LEN] = {0};
 
     if (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM || hdr->opcode == HCI_OP_LE_SET_SCAN_ENABLE) {
-        IOLog("hdr->code: %d, timeout: %d", hdr->opcode, timeout);
+        IOLog("hdr->code: %d, timeout: %d", &hdr->opcode, &timeout);
     }
     
     if (data == nullptr) {
