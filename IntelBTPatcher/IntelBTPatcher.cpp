@@ -162,15 +162,15 @@ IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, 
 {
     HciCommandHdr *hdr = (HciCommandHdr *)data;
     uint32_t hdrLen = request.wLength - 3;
-    IOReturn ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, timeout);
+    IOReturn ret = 0;
 
     if (hdr) {
-        if (ret != 0 && (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM || hdr->opcode == HCI_OP_LE_SET_SCAN_ENABLE)) {
-            #if DEBUG
-                DBGLOG(DRV_NAME, "hdr->opcode %d ret %d", hdr->opcode, ret);
-            #endif
-            ret = 0;
-        }
+        if (hdr->opcode != HCI_OP_LE_SET_SCAN_PARAM && hdr->opcode != HCI_OP_LE_SET_SCAN_ENABLE)
+            ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, timeout);
+        else
+        #if DEBUG
+            DBGLOG(DRV_NAME, "Disable Scan!");
+        #endif
             
 #if DEBUG
         DBGLOG(DRV_NAME, "[%s] bRequest: 0x%x direction: %s type: %s recipient: %s wValue: 0x%02x wIndex: 0x%02x opcode: 0x%04x len: %d length: %d async: %d", provider->getName(), request.bRequest, requestDirectionNames[(request.bmRequestType & kDeviceRequestDirectionMask) >> kDeviceRequestDirectionPhase], requestRecipientNames[(request.bmRequestType & kDeviceRequestRecipientMask) >> kDeviceRequestRecipientPhase], requestTypeNames[(request.bmRequestType & kDeviceRequestTypeMask) >> kDeviceRequestTypePhase], request.wValue, request.wIndex, hdr->opcode, hdr->len, request.wLength, completion != nullptr);
