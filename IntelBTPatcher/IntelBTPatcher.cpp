@@ -182,11 +182,13 @@ IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, 
     }
     
     if (hdr) {
-        if (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM || hdr->opcode == HCI_OP_LE_SET_SCAN_ENABLE){
-            ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, 50000);
-        #if DEBUG
-            DBGLOG(DRV_NAME, "STOP SCAN_PARAM SET!");
-        #endif
+        if (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM){
+            if(hdr->data[0] != 0x00)
+                ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, timeout);
+            #if DEBUG
+            else
+                DBGLOG(DRV_NAME, "STOP SCAN_PARAM SET!");
+            #endif
         }
         else
             ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, timeout);
