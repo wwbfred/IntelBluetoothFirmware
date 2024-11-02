@@ -160,10 +160,27 @@ IOBufferMemoryDescriptor *writeHCIDescriptor = nullptr;
 
 IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, StandardUSB::DeviceRequest &request, void *data, IOMemoryDescriptor *descriptor, unsigned int &length, IOUSBHostCompletion *completion, unsigned int timeout)
 {
-    HciCommandHdr *hdr = (HciCommandHdr *)data;
-    uint32_t hdrLen = request.wLength - 3;
+    HciCommandHdr *hdr = nullptr;
+    uint32_t hdrLen = 0;
+    char hciBuf[MAX_HCI_BUF_LEN] = {0};
     IOReturn ret = 0;
-
+    
+    if (data == nullptr) {
+        if (descriptor != nullptr && (getKernelVersion() < KernelVersion::Sequoia || !descriptor->prepare(kIODirectionOut))) {
+            if (descriptor->getLength() > 0) {
+                descriptor->readBytes(0, hciBuf, min(descriptor->getLength(), MAX_HCI_BUF_LEN));
+                hdrLen = (uint32_t)min(descriptor->getLength(), MAX_HCI_BUF_LEN);
+            }
+            if (getKernelVersion() >= KernelVersion::Sequoia)
+                descriptor->complete(kIODirectionOut);
+        }
+        hdr = (HciCommandHdr *)hciBuf;
+    }
+    else {
+        hdr = (HciCommandHdr *)data;
+        hdrLen = request.wLength - 3;
+    }
+    
     if (hdr) {
         if (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM || hdr->opcode == HCI_OP_LE_SET_SCAN_ENABLE){
             ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, 50000);
