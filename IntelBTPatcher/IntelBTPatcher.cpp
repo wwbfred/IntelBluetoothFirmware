@@ -165,7 +165,7 @@ IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, 
     IOReturn ret = 0;
 
     if (hdr) {
-        if (hdr->opcode != HCI_OP_LE_SET_SCAN_PARAM){
+        if (hdr->opcode == HCI_OP_LE_SET_SCAN_PARAM){
             if(hdr->data[0] != 0x00)
                 ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, timeout);
             #if DEBUG
