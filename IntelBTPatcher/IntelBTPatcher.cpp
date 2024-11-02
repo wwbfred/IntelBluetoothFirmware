@@ -167,8 +167,8 @@ IOReturn CIntelBTPatcher::newHostDeviceRequest(void *that, IOService *provider, 
     if (hdr) {
         if (hdr->opcode != HCI_OP_LE_SET_SCAN_PARAM && hdr->opcode != HCI_OP_LE_SET_SCAN_ENABLE)
             ret = FunctionCast(newHostDeviceRequest, callbackIBTPatcher->oldHostDeviceRequest)(that, provider, request, data, descriptor, length, completion, timeout);
-        else
         #if DEBUG
+        else
             DBGLOG(DRV_NAME, "Disable Scan!");
         #endif
             
