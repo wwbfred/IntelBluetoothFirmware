@@ -1,29 +1,9 @@
-# IntelBluetoothFirmware
-
-![CI](https://github.com/OpenIntelWireless/IntelBluetoothFirmware/workflows/CI/badge.svg)
-
-- **English**
-- [简体中文](/.github/README-zh_Hans.md)
-
-## Intro
-
-IntelBluetoothFirmware is a Kernel Extension that uploads Intel Wireless Bluetooth Firmware to provide native Bluetooth in macOS.
-The firmware binary files are from the Linux Open Source Project.
-
-After several months of public testing, it appears that the Kext is working well and stable.
-
-[![Join the chat at https://gitter.im/OpenIntelWireless/itlwm](https://badges.gitter.im/OpenIntelWireless/IntelBluetoothFirmware.svg)](https://gitter.im/OpenIntelWireless/IntelBluetoothFirmware?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-## Documentation
-
-**Please read the docs carefully before using the Kernel Extensions or submitting an Issue Report!**
-
-- [Supported Devices](https://openintelwireless.github.io/IntelBluetoothFirmware/Compat.html)
-- [Installation](https://openintelwireless.github.io/IntelBluetoothFirmware/Installation.html)
-- [Frequently Asked Questions](https://openintelwireless.github.io/IntelBluetoothFirmware/FAQ.html)
-- [Troubleshooting](https://openintelwireless.github.io/IntelBluetoothFirmware/Troubleshooting.html)
-
-## Credits
-
-- [torvalds/linux](https://github.com/torvalds/linux)
-- [acidanthera/BrcmPatchRAM](https://github.com/acidanthera/BrcmPatchRAM)
+用以解决MacOS下蓝牙由于HCI_OP_LE_SET_SCAN_ENABLE无法成功开启导致的随机崩溃，现象为日志中出现  
+  
+bluetoothd: [com.apple.bluetooth:Stack.HCI] HCI expected event 14 with opcode OI_DHCI_CMD_ID_LE_SET_SCAN_PARAMETERS_OPCODE (0x0000200B) timedout, reason is  STATUS 621  
+  
+bluetoothd: [com.apple.bluetooth:Stack.HCI] HCI expected event 14 with opcode  
+OI_DHCI_CMD_ID_LE_SET_SCAN_ENABLE_OPCODE (0x0000200C) timedout, reason is  STATUS 621  
+  
+错误后bluetoothd进程崩溃，蓝牙设备中断。方法为禁止将HCI_OP_LE_SET_SCAN_ENABLE设置为关闭。  
+模板是IntelBluetoothFirmware的，仅需加载IntelBTPatcher即可。
